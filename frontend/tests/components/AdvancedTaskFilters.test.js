@@ -16,7 +16,7 @@ vi.mock('lodash-es', () => ({
 
 const vuetify = createVuetify({
   components,
-  directives,
+  directives
 })
 
 describe('AdvancedTaskFilters', () => {
@@ -86,10 +86,10 @@ describe('AdvancedTaskFilters', () => {
 
   it('emits filters-changed when filter values change', async () => {
     const statusSelect = wrapper.findComponent({ name: 'VSelect' })
-    
+
     if (statusSelect.exists()) {
       await statusSelect.vm.$emit('update:model-value', 'completed')
-      
+
       expect(wrapper.emitted('filters-changed')).toBeTruthy()
       const emittedEvent = wrapper.emitted('filters-changed')[0]
       expect(emittedEvent[0].status).toBe('completed')
@@ -97,7 +97,7 @@ describe('AdvancedTaskFilters', () => {
   })
 
   it('shows active filter chips when filters are applied', async () => {
-    // Set filters with active values  
+    // Set filters with active values
     await wrapper.setProps({
       filters: {
         ...defaultProps.filters,
@@ -116,10 +116,10 @@ describe('AdvancedTaskFilters', () => {
 
   it('emits export-requested when export is triggered', async () => {
     const exportButton = wrapper.find('[data-testid="export-button"]')
-    
+
     if (exportButton.exists()) {
       await exportButton.trigger('click')
-      
+
       // Should emit export request
       expect(wrapper.emitted('export-requested')).toBeTruthy()
     }
@@ -138,7 +138,7 @@ describe('AdvancedTaskFilters', () => {
     const clearButton = wrapper.find('button:contains("Clear")')
     if (clearButton.exists()) {
       await clearButton.trigger('click')
-      
+
       expect(wrapper.emitted('filters-changed')).toBeTruthy()
       // Should emit cleared filters
       const lastEmission = wrapper.emitted('filters-changed').slice(-1)[0]
@@ -168,7 +168,7 @@ describe('AdvancedTaskFilters', () => {
     // Set some filters
     instance.localFilters.status = 'completed'
     instance.localFilters.search = 'test'
-    
+
     expect(instance.hasActiveFilters).toBe(true)
   })
 
@@ -196,7 +196,7 @@ describe('AdvancedTaskFilters', () => {
 
     expect(chips).toContainEqual(
       expect.objectContaining({
-        key: 'priority', 
+        key: 'priority',
         label: 'Priority: High'
       })
     )

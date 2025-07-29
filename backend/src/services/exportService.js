@@ -64,33 +64,43 @@ class ExportService {
       exportJob.status = 'processing';
       await exportJob.save();
 
-      // Broadcast status update
+      // Broadcast status update with progress
       if (socketHandlers) {
-        socketHandlers.broadcastExportUpdate('processing', exportJob);
+        socketHandlers.broadcastExportUpdate('processing', exportJob, { progress: 0 });
       }
 
       // Build query from filters
       const query = this.buildQueryFromFilters(exportJob.filters);
-      
-      // Get tasks with streaming for large datasets
-      const tasks = await Task.find(query)
-        .sort({ createdAt: -1 })
-        .lean() // Use lean queries for better performance
-        .exec();
+
+      // Use aggregation pipeline for very large datasets (>10k records)
+      const estimatedCount = await Task.countDocuments(query);
+
+      let tasks;
+      if (estimatedCount > 10000) {
+        // Use aggregation pipeline for memory efficiency with large datasets
+        tasks = await this.getTasksWithAggregation(query);
+      } else {
+        // Use regular query for smaller datasets
+        tasks = await Task.find(query)
+          .sort({ createdAt: -1 })
+          .lean()
+          .exec();
+      }
+
       exportJob.recordCount = tasks.length;
 
       // Generate file
       const fileName = this.generateFileName(exportJob.format, exportJob.filters);
       const filePath = path.join(process.cwd(), 'exports', fileName);
-      
+
       // Ensure exports directory exists
       await fs.mkdir(path.dirname(filePath), { recursive: true });
 
-      // Generate export file
+      // Generate export file with progress updates
       if (exportJob.format === 'csv') {
-        await this.generateCSV(tasks, filePath);
+        await this.generateCSV(tasks, filePath, exportJob, socketHandlers);
       } else if (exportJob.format === 'json') {
-        await this.generateJSON(tasks, filePath);
+        await this.generateJSON(tasks, filePath, exportJob, socketHandlers);
       }
 
       // Update export job
@@ -115,7 +125,7 @@ class ExportService {
 
     } catch (error) {
       console.error('Export processing error:', error);
-      
+
       // Update export job with error
       const exportJob = await Export.findById(exportId);
       if (exportJob) {
@@ -129,6 +139,36 @@ class ExportService {
         }
       }
     }
+  }
+
+  /**
+   * Gets tasks using MongoDB aggregation pipeline for large datasets
+   * @static
+   * @async
+   * @param {Object} query - MongoDB query object
+   * @returns {Promise<Array>} Array of task documents
+   */
+  static async getTasksWithAggregation(query) {
+    const pipeline = [
+      { $match: query },
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          status: 1,
+          priority: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          completedAt: 1,
+          estimatedTime: 1,
+          actualTime: 1
+        }
+      }
+    ];
+
+    return await Task.aggregate(pipeline).exec();
   }
 
   /**
@@ -189,9 +229,11 @@ class ExportService {
    * @async
    * @param {Array} tasks - Array of task documents
    * @param {string} filePath - Output file path
+   * @param {Object} exportJob - Export job for progress updates
+   * @param {Object} socketHandlers - Socket handlers for real-time updates
    * @returns {Promise<void>}
    */
-  static async generateCSV(tasks, filePath) {
+  static async generateCSV(tasks, filePath, exportJob = null, socketHandlers = null) {
     const headers = [
       'ID',
       'Title',
@@ -207,16 +249,16 @@ class ExportService {
 
     // Use streaming for large datasets to avoid memory issues
     const writeStream = await fs.open(filePath, 'w');
-    
+
     // Write headers
     await writeStream.write(headers.join(',') + '\n');
 
-    // Process tasks in batches to manage memory
+    // Process tasks in batches to manage memory with progress updates
     const batchSize = 1000;
     for (let i = 0; i < tasks.length; i += batchSize) {
       const batch = tasks.slice(i, i + batchSize);
       let batchContent = '';
-      
+
       for (const task of batch) {
         const row = [
           `"${task._id}"`,
@@ -232,8 +274,14 @@ class ExportService {
         ];
         batchContent += row.join(',') + '\n';
       }
-      
+
       await writeStream.write(batchContent);
+
+      // Send progress update
+      if (exportJob && socketHandlers && tasks.length > 1000) {
+        const progress = Math.min(95, Math.round(((i + batchSize) / tasks.length) * 100));
+        socketHandlers.broadcastExportUpdate('processing', exportJob, { progress });
+      }
     }
 
     await writeStream.close();
@@ -249,14 +297,14 @@ class ExportService {
    */
   static async generateJSON(tasks, filePath) {
     const writeStream = await fs.open(filePath, 'w');
-    
+
     // Write opening structure
     const metadata = {
       exportedAt: new Date().toISOString(),
       totalRecords: tasks.length,
       format: 'json'
     };
-    
+
     await writeStream.write('{\n');
     await writeStream.write(`  "metadata": ${JSON.stringify(metadata, null, 2).replace(/\n/g, '\n  ')},\n`);
     await writeStream.write('  "tasks": [\n');
@@ -265,7 +313,7 @@ class ExportService {
     const batchSize = 1000;
     for (let i = 0; i < tasks.length; i += batchSize) {
       const batch = tasks.slice(i, i + batchSize);
-      
+
       for (let j = 0; j < batch.length; j++) {
         const task = batch[j];
         const taskData = {
@@ -280,18 +328,18 @@ class ExportService {
           estimatedTime: task.estimatedTime,
           actualTime: task.actualTime
         };
-        
+
         const isLast = (i + j) === (tasks.length - 1);
         const taskJson = JSON.stringify(taskData, null, 2)
           .replace(/\n/g, '\n    '); // Indent for array items
-        
+
         await writeStream.write(`    ${taskJson}${isLast ? '' : ','}\n`);
       }
     }
-    
+
     await writeStream.write('  ]\n');
     await writeStream.write('}\n');
-    
+
     await writeStream.close();
   }
 
@@ -370,7 +418,7 @@ class ExportService {
    */
   static async getExportFile(exportId) {
     const exportJob = await Export.findById(exportId);
-    
+
     if (!exportJob) {
       throw new Error('Export not found');
     }
@@ -410,16 +458,16 @@ class ExportService {
     try {
       const cacheKey = this.generateCacheKey(filters, format);
       const cached = await redisClient.get(cacheKey);
-      
+
       if (cached) {
         const exportInfo = JSON.parse(cached);
         const exportJob = await Export.findById(exportInfo.exportId);
-        
+
         if (exportJob && exportJob.status === 'completed') {
           return exportJob;
         }
       }
-      
+
       return null;
     } catch (error) {
       console.error('Cache check error:', error);

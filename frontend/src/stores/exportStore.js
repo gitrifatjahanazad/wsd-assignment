@@ -18,6 +18,7 @@ export const useExportStore = defineStore('exports', () => {
   const loading = ref(false)
   const error = ref(null)
   const exportProgress = ref({})
+  const offlineQueue = ref([])
   const pagination = ref({
     page: 1,
     limit: 10,
@@ -26,19 +27,21 @@ export const useExportStore = defineStore('exports', () => {
   })
 
   const activeExports = computed(() =>
-    exports.value.filter(exp => ['pending', 'processing'].includes(exp.status))
+    exports.value.filter((exp) =>
+      ['pending', 'processing'].includes(exp.status)
+    )
   )
 
   const completedExports = computed(() =>
-    exports.value.filter(exp => exp.status === 'completed')
+    exports.value.filter((exp) => exp.status === 'completed')
   )
 
   const failedExports = computed(() =>
-    exports.value.filter(exp => exp.status === 'failed')
+    exports.value.filter((exp) => exp.status === 'failed')
   )
 
   /**
-   * Creates a new export job
+   * Creates a new export job with offline support
    * @async
    * @function createExport
    * @param {Object} exportOptions - Export options
@@ -47,6 +50,22 @@ export const useExportStore = defineStore('exports', () => {
    * @returns {Promise<Object>} Created export job
    */
   async function createExport(exportOptions) {
+    // Check if offline
+    if (!navigator.onLine) {
+      // Queue for when back online
+      const queuedExport = {
+        id: Date.now().toString(),
+        ...exportOptions,
+        queuedAt: new Date(),
+        status: 'queued-offline'
+      }
+
+      offlineQueue.value.push(queuedExport)
+      error.value =
+        'Export queued - will be processed when connection is restored'
+      return queuedExport
+    }
+
     loading.value = true
     error.value = null
 
@@ -64,7 +83,13 @@ export const useExportStore = defineStore('exports', () => {
 
       return response.data
     } catch (err) {
-      error.value = err.message
+      // Handle network errors gracefully
+      if (err.message.includes('fetch') || err.message.includes('network')) {
+        error.value =
+          'Network error - please check your connection and try again'
+      } else {
+        error.value = err.message
+      }
       console.error('Error creating export:', err)
       throw err
     } finally {
@@ -112,11 +137,11 @@ export const useExportStore = defineStore('exports', () => {
   async function downloadExport(exportId) {
     try {
       // First check if export is completed
-      const exportJob = exports.value.find(exp => exp._id === exportId)
+      const exportJob = exports.value.find((exp) => exp._id === exportId)
       if (!exportJob) {
         throw new Error('Export not found')
       }
-      
+
       if (exportJob.status !== 'completed') {
         throw new Error('Export is not ready for download')
       }
@@ -124,12 +149,16 @@ export const useExportStore = defineStore('exports', () => {
       // Create download link
       const url = `/api/exports/${exportId}/download`
       const response = await fetch(url)
-      
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Download failed' }))
-        throw new Error(errorData.message || `Download failed: ${response.statusText}`)
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: 'Download failed' }))
+        throw new Error(
+          errorData.message || `Download failed: ${response.statusText}`
+        )
       }
-      
+
       // Get filename from response headers
       const contentDisposition = response.headers.get('content-disposition')
       let filename = `export.${exportJob.format}`
@@ -139,7 +168,7 @@ export const useExportStore = defineStore('exports', () => {
           filename = filenameMatch[1]
         }
       }
-      
+
       // Create blob and download
       const blob = await response.blob()
       const downloadUrl = window.URL.createObjectURL(blob)
@@ -150,11 +179,10 @@ export const useExportStore = defineStore('exports', () => {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(downloadUrl)
-      
     } catch (err) {
       error.value = err.message
       console.error('Error downloading export:', err)
-      
+
       // Show user-friendly error message
       if (err.message.includes('not found')) {
         error.value = 'Export file not found. It may have been deleted.'
@@ -163,7 +191,7 @@ export const useExportStore = defineStore('exports', () => {
       } else {
         error.value = 'Failed to download export. Please try again.'
       }
-      
+
       throw err
     }
   }
@@ -194,13 +222,14 @@ export const useExportStore = defineStore('exports', () => {
     }
 
     // Update export in list
-    const index = exports.value.findIndex(exp => exp._id === exportId)
+    const index = exports.value.findIndex((exp) => exp._id === exportId)
     if (index !== -1) {
       exports.value[index] = {
         ...exports.value[index],
         status,
         recordCount: data.recordCount,
-        completedAt: status === 'completed' || status === 'failed' ? new Date() : null
+        completedAt:
+          status === 'completed' || status === 'failed' ? new Date() : null
       }
     }
 
@@ -258,23 +287,25 @@ export const useExportStore = defineStore('exports', () => {
    */
   function formatFilters(filters) {
     const parts = []
-    
+
     if (filters.status && filters.status !== 'all') {
       parts.push(`Status: ${filters.status}`)
     }
-    
+
     if (filters.priority && filters.priority !== 'all') {
       parts.push(`Priority: ${filters.priority}`)
     }
-    
+
     if (filters.search) {
       parts.push(`Search: "${filters.search}"`)
     }
-    
+
     if (filters.dateFrom || filters.dateTo) {
       const dateRange = []
       if (filters.dateFrom) {
-        dateRange.push(`from ${new Date(filters.dateFrom).toLocaleDateString()}`)
+        dateRange.push(
+          `from ${new Date(filters.dateFrom).toLocaleDateString()}`
+        )
       }
       if (filters.dateTo) {
         dateRange.push(`to ${new Date(filters.dateTo).toLocaleDateString()}`)
@@ -285,11 +316,38 @@ export const useExportStore = defineStore('exports', () => {
     return parts.length > 0 ? parts.join(', ') : 'No filters applied'
   }
 
+  /**
+   * Processes offline queue when connection is restored
+   * @async
+   * @function processOfflineQueue
+   * @returns {Promise<void>}
+   */
+  async function processOfflineQueue() {
+    if (offlineQueue.value.length === 0) return
+
+    const queuedExports = [...offlineQueue.value]
+    offlineQueue.value = []
+
+    for (const queuedExport of queuedExports) {
+      try {
+        await createExport({
+          format: queuedExport.format,
+          filters: queuedExport.filters
+        })
+      } catch (error) {
+        console.error('Failed to process queued export:', error)
+        // Re-queue failed exports
+        offlineQueue.value.push(queuedExport)
+      }
+    }
+  }
+
   return {
     exports,
     loading,
     error,
     exportProgress,
+    offlineQueue,
     pagination,
     activeExports,
     completedExports,
@@ -301,6 +359,7 @@ export const useExportStore = defineStore('exports', () => {
     handleExportUpdate,
     initializeSocketListeners,
     cleanup,
-    formatFilters
+    formatFilters,
+    processOfflineQueue
   }
 })

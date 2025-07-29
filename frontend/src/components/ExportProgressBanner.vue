@@ -21,24 +21,24 @@
       <template #title>
         {{ getBannerTitle(exportJob) }}
       </template>
-      
+
       <div class="d-flex align-center">
         <div class="flex-grow-1">
           {{ getBannerMessage(exportJob) }}
         </div>
-        
+
         <v-btn
           v-if="exportJob.status === 'completed'"
           variant="outlined"
           size="small"
-          @click="downloadExport(exportJob._id)"
           class="ml-2"
+          @click="downloadExport(exportJob._id)"
         >
           <v-icon left>mdi-download</v-icon>
           Download
         </v-btn>
       </div>
-      
+
       <v-progress-linear
         v-if="exportJob.status === 'processing'"
         indeterminate

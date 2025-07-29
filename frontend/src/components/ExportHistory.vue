@@ -13,8 +13,8 @@
       <v-spacer></v-spacer>
       <v-btn
         variant="outlined"
-        @click="refreshHistory"
         :loading="exportStore.loading"
+        @click="refreshHistory"
       >
         <v-icon left>mdi-refresh</v-icon>
         Refresh
@@ -47,7 +47,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <v-progress-linear
                 :indeterminate="exportJob.status === 'processing'"
                 :model-value="exportJob.status === 'processing' ? undefined : 0"
@@ -55,11 +55,13 @@
                 height="4"
                 class="mb-2"
               ></v-progress-linear>
-              
+
               <div class="text-caption">
-                {{ exportStore.exportProgress[exportJob._id]?.message || getStatusMessage(exportJob.status) }}
-              </div>
-              
+                {{
+                  exportStore.exportProgress[exportJob._id]?.message ||
+                  getStatusMessage(exportJob.status)
+                }}
+
               <div v-if="exportJob.recordCount > 0" class="text-caption mt-1">
                 {{ exportJob.recordCount }} records
               </div>
@@ -72,16 +74,25 @@
     <!-- Export History Table -->
     <v-card>
       <v-card-title>Export History</v-card-title>
-      
-      <div v-if="exportStore.loading && exportStore.exports.length === 0" class="text-center py-8">
-        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+
+      <div
+        v-if="exportStore.loading && exportStore.exports.length === 0"
+        class="text-center py-8"
+      >
+        <v-progress-circular
+          indeterminate
+          color="primary"
+        ></v-progress-circular>
       </div>
 
       <div v-else-if="exportStore.error" class="text-center py-8">
         <v-alert type="error">{{ exportStore.error }}</v-alert>
       </div>
 
-      <div v-else-if="exportStore.exports.length === 0" class="text-center py-8">
+      <div
+        v-else-if="exportStore.exports.length === 0"
+        class="text-center py-8"
+      >
         <v-icon size="64" color="grey-lighten-1">mdi-download-off</v-icon>
         <p class="text-grey mt-2">No exports found</p>
       </div>
@@ -93,6 +104,8 @@
         :loading="exportStore.loading"
         class="export-history-table"
         item-key="_id"
+        :height="exportStore.exports.length > 50 ? '400px' : undefined"
+        fixed-header
       >
         <template #item.format="{ item }">
           <v-chip
@@ -117,7 +130,7 @@
         </template>
 
         <template #item.filters="{ item }">
-          <div class="text-truncate" style="max-width: 200px;">
+          <div class="text-truncate" style="max-width: 200px">
             {{ exportStore.formatFilters(item.filters) }}
           </div>
         </template>
@@ -145,7 +158,7 @@
               <v-icon>mdi-download</v-icon>
               <v-tooltip activator="parent">Download</v-tooltip>
             </v-btn>
-            
+
             <v-btn
               icon
               size="small"
@@ -179,7 +192,7 @@
               <strong>Format:</strong> {{ selectedExport.format.toUpperCase() }}
             </v-col>
             <v-col cols="6">
-              <strong>Status:</strong> 
+              <strong>Status:</strong>
               <v-chip
                 :color="getStatusColor(selectedExport.status)"
                 size="small"
@@ -190,13 +203,16 @@
               </v-chip>
             </v-col>
             <v-col cols="6">
-              <strong>Records:</strong> {{ selectedExport.recordCount.toLocaleString() }}
+              <strong>Records:</strong>
+              {{ selectedExport.recordCount.toLocaleString() }}
             </v-col>
             <v-col cols="6">
-              <strong>Created:</strong> {{ formatExportDate(selectedExport.createdAt) }}
+              <strong>Created:</strong>
+              {{ formatExportDate(selectedExport.createdAt) }}
             </v-col>
             <v-col v-if="selectedExport.completedAt" cols="6">
-              <strong>Completed:</strong> {{ formatExportDate(selectedExport.completedAt) }}
+              <strong>Completed:</strong>
+              {{ formatExportDate(selectedExport.completedAt) }}
             </v-col>
             <v-col v-if="selectedExport.error" cols="12">
               <strong>Error:</strong>

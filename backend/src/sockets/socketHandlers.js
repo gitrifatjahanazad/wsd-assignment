@@ -99,14 +99,16 @@ class SocketHandlers {
    * Broadcasts export updates to all connected clients in exports room
    * @param {string} status - Export status (processing, completed, failed)
    * @param {Object} exportJob - Export job data
+   * @param {Object} [metadata={}] - Additional metadata (progress, etc.)
    */
-  broadcastExportUpdate(status, exportJob) {
+  broadcastExportUpdate(status, exportJob, metadata = {}) {
     const updateData = {
       exportId: exportJob._id,
       status,
       format: exportJob.format,
       recordCount: exportJob.recordCount,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      ...metadata
     };
 
     // Send to exports room for detailed updates

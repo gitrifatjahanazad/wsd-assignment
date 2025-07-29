@@ -63,12 +63,12 @@ router.get('/tasks', async (req, res, next) => {
     } = req.query;
 
     const query = {};
-    
+
     // Status filter
     if (status && status !== 'all') {
       query.status = status;
     }
-    
+
     // Priority filter
     if (priority && priority !== 'all') {
       query.priority = priority;
@@ -379,7 +379,7 @@ router.post('/exports', async (req, res, next) => {
 router.get('/exports', async (req, res, next) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    
+
     const result = await ExportService.getExportHistory({ page, limit });
 
     res.json({

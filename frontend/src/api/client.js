@@ -208,11 +208,11 @@ class ApiClient {
   async downloadExport(id) {
     const url = `${this.baseURL}/exports/${id}/download`
     const response = await fetch(url)
-    
+
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`)
     }
-    
+
     return response.blob()
   }
 

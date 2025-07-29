@@ -17,8 +17,8 @@
           <v-btn
             variant="outlined"
             size="small"
-            @click="clearFilters"
             :disabled="!hasActiveFilters"
+            @click="clearFilters"
           >
             <v-icon left>mdi-filter-remove</v-icon>
             Clear
@@ -28,7 +28,9 @@
             size="small"
             @click="showAdvanced = !showAdvanced"
           >
-            <v-icon left>{{ showAdvanced ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+            <v-icon left>{{
+              showAdvanced ? 'mdi-chevron-up' : 'mdi-chevron-down'
+            }}</v-icon>
             {{ showAdvanced ? 'Less' : 'More' }}
           </v-btn>
         </div>
@@ -121,7 +123,7 @@
       <v-expand-transition>
         <div v-if="showAdvanced">
           <v-divider class="my-4"></v-divider>
-          
+
           <v-row>
             <v-col cols="12" md="3">
               <v-select
@@ -261,54 +263,77 @@ const orderOptions = [
 ]
 
 const hasActiveFilters = computed(() => {
-  return localFilters.value.status ||
-         localFilters.value.priority ||
-         localFilters.value.search ||
-         localFilters.value.dateFrom ||
-         localFilters.value.dateTo ||
-         localFilters.value.completedDateFrom ||
-         localFilters.value.completedDateTo
+  return (
+    localFilters.value.status ||
+    localFilters.value.priority ||
+    localFilters.value.search ||
+    localFilters.value.dateFrom ||
+    localFilters.value.dateTo ||
+    localFilters.value.completedDateFrom ||
+    localFilters.value.completedDateTo
+  )
 })
 
 const activeFilterChips = computed(() => {
   const chips = []
-  
+
   if (localFilters.value.status) {
-    const status = statusOptions.find(opt => opt.value === localFilters.value.status)
+    const status = statusOptions.find(
+      (opt) => opt.value === localFilters.value.status
+    )
     chips.push({ key: 'status', label: `Status: ${status?.title}` })
   }
-  
+
   if (localFilters.value.priority) {
-    const priority = priorityOptions.find(opt => opt.value === localFilters.value.priority)
+    const priority = priorityOptions.find(
+      (opt) => opt.value === localFilters.value.priority
+    )
     chips.push({ key: 'priority', label: `Priority: ${priority?.title}` })
   }
-  
+
   if (localFilters.value.search) {
-    chips.push({ key: 'search', label: `Search: "${localFilters.value.search}"` })
+    chips.push({
+      key: 'search',
+      label: `Search: "${localFilters.value.search}"`
+    })
   }
-  
+
   if (localFilters.value.dateFrom || localFilters.value.dateTo) {
     const dateRange = []
     if (localFilters.value.dateFrom) {
-      dateRange.push(`from ${new Date(localFilters.value.dateFrom).toLocaleDateString()}`)
+      dateRange.push(
+        `from ${new Date(localFilters.value.dateFrom).toLocaleDateString()}`
+      )
     }
     if (localFilters.value.dateTo) {
-      dateRange.push(`to ${new Date(localFilters.value.dateTo).toLocaleDateString()}`)
+      dateRange.push(
+        `to ${new Date(localFilters.value.dateTo).toLocaleDateString()}`
+      )
     }
     chips.push({ key: 'dateRange', label: `Created: ${dateRange.join(' ')}` })
   }
-  
-  if (localFilters.value.completedDateFrom || localFilters.value.completedDateTo) {
+
+  if (
+    localFilters.value.completedDateFrom ||
+    localFilters.value.completedDateTo
+  ) {
     const completedRange = []
     if (localFilters.value.completedDateFrom) {
-      completedRange.push(`from ${new Date(localFilters.value.completedDateFrom).toLocaleDateString()}`)
+      completedRange.push(
+        `from ${new Date(localFilters.value.completedDateFrom).toLocaleDateString()}`
+      )
     }
     if (localFilters.value.completedDateTo) {
-      completedRange.push(`to ${new Date(localFilters.value.completedDateTo).toLocaleDateString()}`)
+      completedRange.push(
+        `to ${new Date(localFilters.value.completedDateTo).toLocaleDateString()}`
+      )
     }
-    chips.push({ key: 'completedRange', label: `Completed: ${completedRange.join(' ')}` })
+    chips.push({
+      key: 'completedRange',
+      label: `Completed: ${completedRange.join(' ')}`
+    })
   }
-  
+
   return chips
 })
 
