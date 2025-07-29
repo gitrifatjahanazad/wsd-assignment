@@ -1,0 +1,28 @@
+{
+  "name": "wsd-fullstack-js-tech-test-main",
+  "version": "1.0.0",
+  "description": "> **Note**: This repository is used for internal technical candidate assessments and is not intended for production use.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run services\" \"npm run backend\" \"npm run frontend\"",
+    "services": "docker-compose up -d",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "stop": "docker-compose down",
+    "setup": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "seed": "cd backend && npm run seed",
+    "test": "concurrently \"cd backend && npm test\" \"cd frontend && npm test\"",
+    "lint": "concurrently \"cd backend && npm run lint\" \"cd frontend && npm run lint\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^1.0.62"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
