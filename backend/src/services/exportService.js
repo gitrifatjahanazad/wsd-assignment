@@ -434,7 +434,7 @@ class ExportService {
     // Check if file exists
     try {
       await fs.access(exportJob.filePath);
-    } catch (error) {
+    } catch {
       throw new Error('Export file no longer available');
     }
 

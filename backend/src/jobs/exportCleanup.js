@@ -218,7 +218,7 @@ class ExportCleanupJob {
           try {
             const stat = await fs.stat(exportRecord.filePath);
             stats.estimatedSpaceSaved += stat.size;
-          } catch (error) {
+          } catch {
             // File might not exist, ignore
           }
         }
