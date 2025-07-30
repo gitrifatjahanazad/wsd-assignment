@@ -61,6 +61,7 @@
                   exportStore.exportProgress[exportJob._id]?.message ||
                   getStatusMessage(exportJob.status)
                 }}
+              </div>
 
               <div v-if="exportJob.recordCount > 0" class="text-caption mt-1">
                 {{ exportJob.recordCount }} records
