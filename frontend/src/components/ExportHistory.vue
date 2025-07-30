@@ -5,6 +5,7 @@
  * @description Comprehensive export history interface with pagination, status tracking, and download functionality
  */
 -->
+<!-- eslint-disable vue/valid-v-slot -->
 
 <template>
   <div>
@@ -154,6 +155,7 @@
               icon
               size="small"
               variant="text"
+              data-testid="download-button"
               @click="downloadExport(item._id)"
             >
               <v-icon>mdi-download</v-icon>
@@ -164,6 +166,7 @@
               icon
               size="small"
               variant="text"
+              data-testid="view-details-button"
               @click="showExportDetails(item)"
             >
               <v-icon>mdi-eye</v-icon>
